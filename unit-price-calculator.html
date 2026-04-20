@@ -661,8 +661,39 @@ function renderAll() {
 }
 
 /* ─────────────────────────────────────────────
+   Unit size sanitiser
+───────────────────────────────────────────── */
+function sanitiseUnitSize(val) {
+  let s = val.trim();
+  if (!s) return s;
+
+  // ── Units that need a space before them (pack, litre, litres) ──
+  s = s.replace(/^(\d+(?:\.\d+)?)\s*(pack|packs|pk|litres?)\s*$/i, (_, n, u) => n + ' ' + u.toLowerCase());
+
+  // ── Units that must NOT have a space (g, kg, mg, ml, cl, l, oz, lb, lbs) ──
+  s = s.replace(/^(\d+(?:\.\d+)?)\s*(mg|kg|ml|cl|fl\.?\s*oz|lbs?|oz|g|l)\s*$/i, (_, n, u) => n + u.toLowerCase().replace(/\s/g, ''));
+
+  return s;
+}
+
+/* ─────────────────────────────────────────────
    Event delegation — products list
 ───────────────────────────────────────────── */
+document.getElementById('products-list').addEventListener('blur', function(e) {
+  if (e.target.dataset.field !== 'unitSize') return;
+  const row = e.target.closest('.product-row');
+  if (!row) return;
+  const p = products.find(x => x.id === +row.dataset.id);
+  if (!p) return;
+  const sanitised = sanitiseUnitSize(e.target.value);
+  if (sanitised !== e.target.value) {
+    e.target.value = sanitised;
+    p.unitSize = sanitised;
+    renderUpCell(row.querySelector('.up-cell'), p);
+    buildTC();
+  }
+}, true); // capture phase so blur fires on input elements
+
 document.getElementById('products-list').addEventListener('input', function(e) {
   const row   = e.target.closest('.product-row');
   if (!row) return;
