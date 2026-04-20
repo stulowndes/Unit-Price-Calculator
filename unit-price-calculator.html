@@ -373,9 +373,11 @@ function newProduct() {
 ───────────────────────────────────────────── */
 function formatPrice(amount) {
   if (amount < 1) {
-    return Math.round(amount * 100) + 'p';
+    const pence = Math.round(amount * 1000) / 10;
+    const penceStr = Number.isInteger(pence) ? String(pence) : pence.toFixed(1);
+    return penceStr + 'p';
   }
-  const str = amount.toFixed(2);
+  const str = (Math.round(amount * 100) / 100).toFixed(2);
   return '£' + (str.endsWith('.00') ? str.slice(0, -3) : str);
 }
 
@@ -451,10 +453,9 @@ function calcUP(product) {
   if (!parsed.qty)     return { show: true, ready: false, err: 'Invalid size' };
 
   const raw     = price / parsed.qty;
-  const floored = Math.round(raw * 100) / 100;
-  const display = formatPrice(floored) + ' ' + parsed.label;
+  const display = formatPrice(raw) + ' ' + parsed.label;
 
-  return { show: true, ready: true, display, value: floored, label: parsed.label };
+  return { show: true, ready: true, display, value: raw, label: parsed.label };
 }
 
 /* ─────────────────────────────────────────────
