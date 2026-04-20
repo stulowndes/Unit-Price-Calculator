@@ -398,10 +398,10 @@ function parseUnit(str) {
   const s = str.trim().toLowerCase();
 
   // Exact keywords — no unit price needed
-  if (s === 'pair') return { type: 'none' };
-  // 'each' and 'set' show price as-is with their label
+  // 'each', 'set' and 'pair' show price as-is with their label
   if (s === 'each') return { type: 'p', qty: 1, label: 'each' };
   if (s === 'set')  return { type: 'p', qty: 1, label: 'per set' };
+  if (s === 'pair') return { type: 'p', qty: 1, label: 'pair' };
 
   let m;
 
@@ -485,16 +485,17 @@ function buildTC() {
       const unitKey = p.unitSize.trim().toLowerCase();
       const isSet   = unitKey === 'set';
       const isEach  = unitKey === 'each';
+      const isPair  = unitKey === 'pair';
       const is1litre = /^1\s*(?:l|litre|litres)$/.test(unitKey) || unitKey === 'litre' || unitKey === 'litres';
       const is1kg    = /^1\s*kg$/.test(unitKey) || unitKey === 'kg';
-      const omitSize = isSet || isEach || is1litre || is1kg;
+      const omitSize = isSet || isEach || isPair || is1litre || is1kg;
       const seg     = omitSize
         ? p.name.trim()
         : [p.name.trim(), p.unitSize.trim()].filter(Boolean).join(' ');
-      if (isSet || isEach) {
+      if (isSet || isEach || isPair) {
         const price    = parsePrice(p.price);
         const priceStr = price !== null ? formatPrice(price) : '';
-        const lbl      = isSet ? 'per set' : 'each';
+        const lbl      = isSet ? 'per set' : unitKey;
         return seg + (priceStr ? ', ' + priceStr + ' ' + lbl + '.' : '.');
       }
       if (up.show && up.ready) {
