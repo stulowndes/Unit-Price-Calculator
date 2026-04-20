@@ -280,7 +280,22 @@
     .btn-copy-tc.ok { background: #10b981; }
     .btn-copy-tc:disabled { opacity: 0.4; cursor: default; }
 
-    /* ── Divider row ── */
+    /* ── Sort button ── */
+    .col-sort {
+      display: inline-flex; align-items: center; gap: 0.3rem;
+    }
+    .btn-sort {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 20px; height: 20px;
+      border: 1px solid var(--input-bd); border-radius: 4px;
+      background: var(--ord-bg); cursor: pointer; color: var(--col-lbl);
+      padding: 0; flex-shrink: 0;
+      transition: all 0.12s;
+    }
+    .btn-sort:hover { background: var(--ord-hover); border-color: var(--ord-hvbd); color: var(--ord-hvcol); }
+    .btn-sort.asc  { color: #6366f1; border-color: #6366f1; background: #f5f3ff; }
+    .btn-sort.desc { color: #6366f1; border-color: #6366f1; background: #f5f3ff; }
+    body.dark .btn-sort.asc, body.dark .btn-sort.desc { background: #1e1b4b; }
     .row-divider {
       height: 1px; background: var(--divider);
       margin: 0.35rem 0.25rem;
@@ -322,7 +337,13 @@
     <div class="col-headers">
       <div class="col-lbl"></div>
       <div class="col-lbl">Product Name</div>
-      <div class="col-lbl">Retail Price</div>
+      <div class="col-lbl"><span class="col-sort">Retail Price
+        <button class="btn-sort" id="btn-sort-price" title="Sort by price">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 5l-7 7h14l-7-7z"/><path d="M12 19l7-7H5l7 7z"/>
+          </svg>
+        </button>
+      </span></div>
       <div class="col-lbl">Unit Size</div>
       <div class="col-lbl">Unit Price</div>
       <div class="col-lbl"></div>
@@ -707,6 +728,27 @@ document.getElementById('btn-copy-tc').addEventListener('click', function() {
       this.innerHTML = iconCopy(14) + ' Copy to Clipboard';
     }, 2000);
   });
+});
+
+/* ─────────────────────────────────────────────
+   Sort by price
+───────────────────────────────────────────── */
+let sortDir = null; // null | 'asc' | 'desc'
+
+document.getElementById('btn-sort-price').addEventListener('click', function() {
+  sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  const btn = this;
+  btn.className = 'btn-sort ' + sortDir;
+  btn.title = sortDir === 'asc' ? 'Sorted: cheapest first' : 'Sorted: most expensive first';
+  btn.innerHTML = sortDir === 'asc'
+    ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19l-7-7h14l-7 7z"/></svg>`
+    : `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5l7 7H5l7-7z"/></svg>`;
+  products.sort((a, b) => {
+    const pa = parsePrice(a.price) ?? Infinity;
+    const pb = parsePrice(b.price) ?? Infinity;
+    return sortDir === 'asc' ? pa - pb : pb - pa;
+  });
+  renderAll();
 });
 
 /* ─────────────────────────────────────────────
