@@ -369,6 +369,17 @@ function newProduct() {
 }
 
 /* ─────────────────────────────────────────────
+   Price display formatter
+───────────────────────────────────────────── */
+function formatPrice(amount) {
+  if (amount < 1) {
+    return Math.round(amount * 100) + 'p';
+  }
+  const str = amount.toFixed(2);
+  return '£' + (str.endsWith('.00') ? str.slice(0, -3) : str);
+}
+
+/* ─────────────────────────────────────────────
    Parsing
 ───────────────────────────────────────────── */
 function parsePrice(str) {
@@ -397,6 +408,7 @@ function parseUnit(str) {
   // ── Weight ──
   m = s.match(/^([\d.]+)\s*kg$/);
   if (m) return { type: 'w', qty: +m[1],             label: 'per kg' };
+  if (s === 'kg') return { type: 'w', qty: 1, label: 'per kg' };
   m = s.match(/^([\d.]+)\s*g$/);
   if (m) return { type: 'w', qty: +m[1] / 1e3,       label: 'per kg' };
   m = s.match(/^([\d.]+)\s*mg$/);
@@ -407,8 +419,9 @@ function parseUnit(str) {
   if (m) return { type: 'w', qty: +m[1] * 0.0283495, label: 'per kg' };
 
   // ── Volume ──
-  m = s.match(/^([\d.]+)\s*l$/);
+  m = s.match(/^([\d.]+)\s*(?:l|litre|litres)$/);
   if (m) return { type: 'v', qty: +m[1],              label: 'per litre' };
+  if (s === 'litre' || s === 'litres') return { type: 'v', qty: 1, label: 'per litre' };
   m = s.match(/^([\d.]+)\s*ml$/);
   if (m) return { type: 'v', qty: +m[1] / 1e3,        label: 'per litre' };
   m = s.match(/^([\d.]+)\s*cl$/);
@@ -438,8 +451,8 @@ function calcUP(product) {
   if (!parsed.qty)     return { show: true, ready: false, err: 'Invalid size' };
 
   const raw     = price / parsed.qty;
-  const floored = Math.floor(raw * 100) / 100;
-  const display = '£' + floored.toFixed(2) + ' ' + parsed.label;
+  const floored = Math.round(raw * 100) / 100;
+  const display = formatPrice(floored) + ' ' + parsed.label;
 
   return { show: true, ready: true, display, value: floored, label: parsed.label };
 }
@@ -472,12 +485,15 @@ function buildTC() {
       const unitKey = p.unitSize.trim().toLowerCase();
       const isSet   = unitKey === 'set';
       const isEach  = unitKey === 'each';
-      const seg     = (isSet || isEach)
+      const is1litre = /^1\s*(?:l|litre|litres)$/.test(unitKey) || unitKey === 'litre' || unitKey === 'litres';
+      const is1kg    = /^1\s*kg$/.test(unitKey) || unitKey === 'kg';
+      const omitSize = isSet || isEach || is1litre || is1kg;
+      const seg     = omitSize
         ? p.name.trim()
         : [p.name.trim(), p.unitSize.trim()].filter(Boolean).join(' ');
       if (isSet || isEach) {
         const price    = parsePrice(p.price);
-        const priceStr = price !== null ? '£' + price.toFixed(2) : '';
+        const priceStr = price !== null ? formatPrice(price) : '';
         const lbl      = isSet ? 'per set' : 'each';
         return seg + (priceStr ? ', ' + priceStr + ' ' + lbl + '.' : '.');
       }
