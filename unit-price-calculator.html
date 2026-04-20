@@ -322,7 +322,7 @@
     <div class="col-headers">
       <div class="col-lbl"></div>
       <div class="col-lbl">Product Name</div>
-      <div class="col-lbl">Price</div>
+      <div class="col-lbl">Retail Price</div>
       <div class="col-lbl">Unit Size</div>
       <div class="col-lbl">Unit Price</div>
       <div class="col-lbl"></div>
@@ -497,7 +497,12 @@ function buildTC() {
         const lbl      = isSet ? 'per set' : 'each';
         return seg + (priceStr ? ', ' + priceStr + ' ' + lbl + '.' : '.');
       }
-      if (up.show && up.ready) return seg + ', ' + up.display + '.';
+      if (up.show && up.ready) {
+        const retailPrice = parsePrice(p.price);
+        const omitRetail  = is1litre || is1kg;
+        const retailStr   = (!omitRetail && retailPrice !== null) ? ', ' + formatPrice(retailPrice) : '';
+        return seg + retailStr + ', ' + up.display + '.';
+      }
       return seg + '.';
     });
 
