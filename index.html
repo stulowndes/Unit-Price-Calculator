@@ -48,12 +48,12 @@
       --bg:          #0f172a;
       --text:        #e2e8f0;
       --text-head:   #f1f5f9;
-      --text-sub:    #64748b;
+      --text-sub:    #cbd5e1;
       --card-bg:     #1e293b;
       --card-border: rgba(255,255,255,0.04);
       --card-shadow: rgba(0,0,0,0.35);
       --divider:     #1e3a5f20;
-      --col-lbl:     #475569;
+      --col-lbl:     #94a3b8;
       --row-hover:   #162032;
       --input-bg:    #162032;
       --input-bd:    #334155;
@@ -65,14 +65,14 @@
       --ord-hvbd:    #4a6fa5;
       --ord-hvcol:   #93c5fd;
       --up-text:     #f1f5f9;
-      --up-na:       #475569;
+      --up-na:       #94a3b8;
       --up-wait:     #334155;
       --cp-bg:       #162032;
       --cp-bd:       #334155;
       --cp-hover:    #1e3a5f;
       --del-hover:   #2d1a1a;
       --add-bd:      #334155;
-      --add-col:     #475569;
+      --add-col:     #94a3b8;
       --tc-bg:       #162032;
       --tc-bd:       #334155;
       --tc-text:     #cbd5e1;
@@ -189,6 +189,7 @@
     .product-row {
       display: grid;
       grid-template-columns: 50px 1fr 140px 170px 1fr 34px;
+      column-gap: 0.5rem;
       padding: 0.35rem 0.25rem;
       border-radius: 8px;
       transition: background 0.12s;
@@ -223,7 +224,7 @@
     .f-input::placeholder { color: var(--input-ph); }
 
     /* ── Unit price cell ── */
-    .up-cell { display: flex; align-items: center; gap: 0.4rem; min-height: 36px; padding-left: 0.6rem; }
+    .up-cell { display: flex; align-items: center; gap: 0.4rem; min-height: 36px; }
 
     .up-val {
       flex: 1;
