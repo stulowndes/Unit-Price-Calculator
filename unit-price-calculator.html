@@ -163,7 +163,7 @@
       text-transform: uppercase;
       letter-spacing: 0.07em;
       color: var(--col-lbl);
-      padding: 0 0.1rem;
+      padding: 0 0.1rem 0 0.5rem;
     }
 
     /* ── Product rows ── */
@@ -206,7 +206,7 @@
     .f-input::placeholder { color: var(--input-ph); }
 
     /* ── Unit price cell ── */
-    .up-cell { display: flex; align-items: center; gap: 0.4rem; min-height: 36px; }
+    .up-cell { display: flex; align-items: center; gap: 0.4rem; min-height: 36px; padding-left: 0.6rem; }
 
     .up-val {
       flex: 1;
@@ -231,7 +231,7 @@
     /* ── Delete button ── */
     .btn-del {
       display: flex; align-items: center; justify-content: center;
-      width: 28px; height: 28px; margin: 0 auto;
+      width: 28px; height: 28px; margin: auto;
       border: none; border-radius: 6px;
       background: none; cursor: pointer; color: var(--up-wait);
       font-size: 1.15rem; font-weight: 300;
