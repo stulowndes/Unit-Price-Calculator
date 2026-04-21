@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Unit Price Calculator</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -141,6 +142,7 @@
     .card-head {
       display: flex;
       align-items: center;
+      justify-content: space-between;
       padding-bottom: 1rem;
       margin-bottom: 0.75rem;
       border-bottom: 1px solid var(--divider);
@@ -150,6 +152,22 @@
       font-weight: 600;
       color: var(--text-head);
     }
+
+    /* ── Import / Export buttons ── */
+    .io-btns { display: flex; gap: 0.5rem; align-items: center; }
+    .btn-io {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.4rem 0.75rem;
+      background: var(--card-bg);
+      border: 1.5px solid var(--input-bd);
+      border-radius: 99px;
+      cursor: pointer;
+      font-size: 0.8rem; font-weight: 500; font-family: inherit;
+      color: var(--text-sub);
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .btn-io:hover { border-color: var(--ord-hvbd); color: var(--text); }
 
     /* ── Column headers ── */
     .col-headers {
@@ -332,6 +350,21 @@
   <div class="card">
     <div class="card-head">
       <span class="card-title">Products</span>
+      <div class="io-btns">
+        <button class="btn-io" id="btn-import">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Import
+        </button>
+        <button class="btn-io" id="btn-export">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Export
+        </button>
+        <input type="file" id="file-import" accept=".xlsx,.xls" style="display:none">
+      </div>
     </div>
 
     <div class="col-headers">
@@ -799,6 +832,83 @@ document.getElementById('btn-sort-price').addEventListener('click', function() {
     localStorage.setItem('upc-dark', isDark);
   });
 })();
+
+/* ─────────────────────────────────────────────
+   Import / Export (SheetJS)
+───────────────────────────────────────────── */
+document.getElementById('btn-import').addEventListener('click', () => {
+  document.getElementById('file-import').value = '';
+  document.getElementById('file-import').click();
+});
+
+document.getElementById('file-import').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb   = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+      if (!rows.length) { alert('The spreadsheet appears to be empty.'); return; }
+
+      // Map normalised header names to actual keys
+      const headerMap = {};
+      Object.keys(rows[0]).forEach(k => { headerMap[k.trim().toLowerCase()] = k; });
+
+      const nameKey  = headerMap['product name'];
+      const priceKey = headerMap['retail price'];
+      const sizeKey  = headerMap['unit size'];
+      // 'unit price' is intentionally ignored — it will be recalculated
+
+      if (!nameKey && !priceKey && !sizeKey) {
+        alert('No recognised columns found.\nExpected at least one of: "Product Name", "Retail Price", "Unit Size".');
+        return;
+      }
+
+      const imported = rows
+        .filter(r => (nameKey && String(r[nameKey]).trim()) ||
+                     (priceKey && String(r[priceKey]).trim()) ||
+                     (sizeKey  && String(r[sizeKey]).trim()))
+        .map(r => ({
+          id:       ++uid,
+          name:     nameKey  ? String(r[nameKey]).trim()  : '',
+          price:    priceKey ? String(r[priceKey]).trim() : '',
+          unitSize: sizeKey  ? String(r[sizeKey]).trim()  : '',
+        }));
+
+      if (!imported.length) { alert('No product data found in the spreadsheet.'); return; }
+
+      imported.forEach(p => { p.unitSize = sanitiseUnitSize(p.unitSize); });
+      products = imported;
+      renderAll();
+    } catch (err) {
+      alert('Could not read the file. Please make sure it is a valid Excel spreadsheet.');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  if (!products.length) return;
+
+  const headers = ['Product Name', 'Retail Price', 'Unit Size', 'Unit Price'];
+  const data = products.map(p => {
+    const up = calcUP(p);
+    return [
+      p.name,
+      p.price,
+      p.unitSize,
+      (up.show && up.ready) ? up.display : '',
+    ];
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Products');
+  XLSX.writeFile(wb, 'unit-prices.xlsx');
+});
 
 /* ─────────────────────────────────────────────
    Init
