@@ -699,8 +699,11 @@ function sanitiseUnitSize(val) {
   let s = val.trim();
   if (!s) return s;
 
+  // ── Expand 'pk' abbreviation to 'pack' ──
+  s = s.replace(/^(\d+(?:\.\d+)?)\s*pk\s*$/i, '$1 pack');
+
   // ── Units that need a space before them (pack, litre, litres) ──
-  s = s.replace(/^(\d+(?:\.\d+)?)\s*(pack|packs|pk|litres?)\s*$/i, (_, n, u) => n + ' ' + u.toLowerCase());
+  s = s.replace(/^(\d+(?:\.\d+)?)\s*(pack|packs|litres?)\s*$/i, (_, n, u) => n + ' ' + u.toLowerCase());
 
   // ── Units that must NOT have a space (g, kg, mg, ml, cl, l, oz, lb, lbs) ──
   s = s.replace(/^(\d+(?:\.\d+)?)\s*(mg|kg|ml|cl|fl\.?\s*oz|lbs?|oz|g|l)\s*$/i, (_, n, u) => n + u.toLowerCase().replace(/\s/g, ''));
