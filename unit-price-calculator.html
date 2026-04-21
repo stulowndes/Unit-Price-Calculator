@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Unit Price Calculator</title>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -834,8 +833,27 @@ document.getElementById('btn-sort-price').addEventListener('click', function() {
 })();
 
 /* ─────────────────────────────────────────────
-   Import / Export (SheetJS)
+   Import / Export (SheetJS — loaded on demand)
 ───────────────────────────────────────────── */
+function loadXLSX() {
+  if (typeof XLSX !== 'undefined') return Promise.resolve();
+  const cdns = [
+    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+    'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js',
+  ];
+  function tryLoad(i) {
+    if (i >= cdns.length) return Promise.reject(new Error('library-load-failed'));
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = cdns[i];
+      s.onload  = resolve;
+      s.onerror = () => tryLoad(i + 1).then(resolve, reject);
+      document.head.appendChild(s);
+    });
+  }
+  return tryLoad(0);
+}
+
 document.getElementById('btn-import').addEventListener('click', () => {
   document.getElementById('file-import').value = '';
   document.getElementById('file-import').click();
@@ -846,68 +864,75 @@ document.getElementById('file-import').addEventListener('change', function() {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = function(e) {
-    try {
-      const wb   = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-      const ws   = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    loadXLSX().then(function() {
+      try {
+        const wb   = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        const ws   = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
-      if (!rows.length) { alert('The spreadsheet appears to be empty.'); return; }
+        if (!rows.length) { alert('The spreadsheet appears to be empty.'); return; }
 
-      // Map normalised header names to actual keys
-      const headerMap = {};
-      Object.keys(rows[0]).forEach(k => { headerMap[k.trim().toLowerCase()] = k; });
+        // Map normalised header names to actual keys
+        const headerMap = {};
+        Object.keys(rows[0]).forEach(k => { headerMap[k.trim().toLowerCase()] = k; });
 
-      const nameKey  = headerMap['product name'];
-      const priceKey = headerMap['retail price'];
-      const sizeKey  = headerMap['unit size'];
-      // 'unit price' is intentionally ignored — it will be recalculated
+        const nameKey  = headerMap['product name'];
+        const priceKey = headerMap['retail price'];
+        const sizeKey  = headerMap['unit size'];
+        // 'unit price' is intentionally ignored — it will be recalculated
 
-      if (!nameKey && !priceKey && !sizeKey) {
-        alert('No recognised columns found.\nExpected at least one of: "Product Name", "Retail Price", "Unit Size".');
-        return;
+        if (!nameKey && !priceKey && !sizeKey) {
+          alert('No recognised columns found.\nExpected at least one of: "Product Name", "Retail Price", "Unit Size".');
+          return;
+        }
+
+        const imported = rows
+          .filter(r => (nameKey && String(r[nameKey]).trim()) ||
+                       (priceKey && String(r[priceKey]).trim()) ||
+                       (sizeKey  && String(r[sizeKey]).trim()))
+          .map(r => ({
+            id:       ++uid,
+            name:     nameKey  ? String(r[nameKey]).trim()  : '',
+            price:    priceKey ? String(r[priceKey]).trim() : '',
+            unitSize: sizeKey  ? String(r[sizeKey]).trim()  : '',
+          }));
+
+        if (!imported.length) { alert('No product data found in the spreadsheet.'); return; }
+
+        imported.forEach(p => { p.unitSize = sanitiseUnitSize(p.unitSize); });
+        products = imported;
+        renderAll();
+      } catch (err) {
+        alert('Could not read the file. Please make sure it is a valid Excel spreadsheet.');
       }
-
-      const imported = rows
-        .filter(r => (nameKey && String(r[nameKey]).trim()) ||
-                     (priceKey && String(r[priceKey]).trim()) ||
-                     (sizeKey  && String(r[sizeKey]).trim()))
-        .map(r => ({
-          id:       ++uid,
-          name:     nameKey  ? String(r[nameKey]).trim()  : '',
-          price:    priceKey ? String(r[priceKey]).trim() : '',
-          unitSize: sizeKey  ? String(r[sizeKey]).trim()  : '',
-        }));
-
-      if (!imported.length) { alert('No product data found in the spreadsheet.'); return; }
-
-      imported.forEach(p => { p.unitSize = sanitiseUnitSize(p.unitSize); });
-      products = imported;
-      renderAll();
-    } catch (err) {
-      alert('Could not read the file. Please make sure it is a valid Excel spreadsheet.');
-    }
+    }).catch(function() {
+      alert('The Excel library could not be loaded. Please check your internet connection and try again.');
+    });
   };
   reader.readAsArrayBuffer(file);
 });
 
 document.getElementById('btn-export').addEventListener('click', () => {
   if (!products.length) return;
+  loadXLSX().then(function() {
+    const headers = ['Product Name', 'Retail Price', 'Unit Size', 'Unit Price'];
+    const data = products.map(p => {
+      const up = calcUP(p);
+      return [
+        p.name,
+        p.price,
+        p.unitSize,
+        (up.show && up.ready) ? up.display : '',
+      ];
+    });
 
-  const headers = ['Product Name', 'Retail Price', 'Unit Size', 'Unit Price'];
-  const data = products.map(p => {
-    const up = calcUP(p);
-    return [
-      p.name,
-      p.price,
-      p.unitSize,
-      (up.show && up.ready) ? up.display : '',
-    ];
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Products');
+    XLSX.writeFile(wb, 'unit-prices.xlsx');
+  }).catch(function() {
+    alert('The Excel library could not be loaded. Please check your internet connection and try again.');
   });
-
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Products');
-  XLSX.writeFile(wb, 'unit-prices.xlsx');
 });
 
 /* ─────────────────────────────────────────────
