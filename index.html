@@ -711,6 +711,17 @@ function sanitiseUnitSize(val) {
   let s = val.trim();
   if (!s) return s;
 
+  // ── Multiplied packs: normalise to "N x AmountUnit" (e.g. 4x200ml → 4 x 200ml) ──
+  s = s.replace(
+    /^(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*(mg|kg|ml|cl|fl\.?\s*oz|lbs?|oz|g|l|litres?|pack|packs|pk)\s*$/i,
+    (_, count, amount, unit) => {
+      // normalise the unit part the same way the rest of sanitiseUnitSize would
+      const u = unit.trim().toLowerCase().replace(/\s/g, '');
+      const needsSpace = /^(pack|packs|litres?)$/.test(u);
+      return count + ' x ' + amount + (needsSpace ? ' ' : '') + u;
+    }
+  );
+
   // ── Expand 'pk' abbreviation to 'pack' ──
   s = s.replace(/^(\d+(?:\.\d+)?)\s*pk\s*$/i, '$1 pack');
 
