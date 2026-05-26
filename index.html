@@ -461,6 +461,17 @@ function parseUnit(str) {
 
   let m;
 
+  // ── Multiplied packs: e.g. 4x200ml, 4 x 400ml, 6x1kg ──
+  m = s.match(/^([\d.]+)\s*x\s*([\d.]+)\s*(kg|g|mg|lbs?|oz|l|litre|litres|ml|cl|fl\.?\s*oz)$/);
+  if (m) {
+    const count = +m[1];
+    const amount = +m[2];
+    const unit = m[3].replace(/\s/g, '');
+    const total = count * amount;
+    // Re-parse as a plain "total unit" string
+    return parseUnit(total + unit);
+  }
+
   // ── Weight ──
   m = s.match(/^([\d.]+)\s*kg$/);
   if (m) return { type: 'w', qty: +m[1],             label: 'per kg' };
