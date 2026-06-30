@@ -462,7 +462,7 @@ function parseUnit(str) {
   let m;
 
   // ── Multiplied packs: e.g. 4x200ml, 4 x 400ml, 6x1kg ──
-  m = s.match(/^([\d.]+)\s*x\s*([\d.]+)\s*(kg|g|mg|lbs?|oz|l|litre|litres|ml|cl|fl\.?\s*oz)$/);
+  m = s.match(/^([\d.]+)\s*x\s*([\d.]+)\s*(kg|g|mg|lbs?|oz|l|litre|litres|ml|cl|fl\.?\s*oz|pt|pint|pints)$/);
   if (m) {
     const count = +m[1];
     const amount = +m[2];
@@ -495,6 +495,9 @@ function parseUnit(str) {
   if (m) return { type: 'v', qty: +m[1] / 100,        label: 'per litre' };
   m = s.match(/^([\d.]+)\s*fl\.?\s*oz$/);
   if (m) return { type: 'v', qty: +m[1] * 0.0284131,  label: 'per litre' };
+  m = s.match(/^([\d.]+)\s*(?:pt|pint|pints)$/);
+  if (m) return { type: 'v', qty: +m[1] * 0.568261,   label: 'per litre' };
+  if (s === 'pt' || s === 'pint' || s === 'pints') return { type: 'v', qty: 0.568261, label: 'per litre' };
 
   // ── Pack / count ──
   m = s.match(/^([\d.]+)\s*(?:pack|packs|pk|x)$/);
@@ -713,7 +716,7 @@ function sanitiseUnitSize(val) {
 
   // ── Multiplied packs: normalise to "N x AmountUnit" (e.g. 4x200ml → 4 x 200ml) ──
   s = s.replace(
-    /^(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*(mg|kg|ml|cl|fl\.?\s*oz|lbs?|oz|g|l|litres?|pack|packs|pk)\s*$/i,
+    /^(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\s*(mg|kg|ml|cl|fl\.?\s*oz|lbs?|oz|g|l|litres?|pack|packs|pk|pt|pints?)\s*$/i,
     (_, count, amount, unit) => {
       // normalise the unit part the same way the rest of sanitiseUnitSize would
       const u = unit.trim().toLowerCase().replace(/\s/g, '');
@@ -730,6 +733,14 @@ function sanitiseUnitSize(val) {
 
   // ── Units that must NOT have a space (g, kg, mg, ml, cl, l, oz, lb, lbs) ──
   s = s.replace(/^(\d+(?:\.\d+)?)\s*(mg|kg|ml|cl|fl\.?\s*oz|lbs?|oz|g|l)\s*$/i, (_, n, u) => n + u.toLowerCase().replace(/\s/g, ''));
+
+  // ── Pints: normalise to "N pint" or "N pints" (UK pint) ──
+  s = s.replace(/^(\d+(?:\.\d+)?)\s*(?:pt|pints?)\s*$/i, (_, n) => {
+    const num = parseFloat(n);
+    return n + ' ' + (num === 1 ? 'pint' : 'pints');
+  });
+  // bare "pt" / "pint" / "pints" → "1 pint"
+  if (/^(?:pt|pints?)$/i.test(s)) s = '1 pint';
 
   return s;
 }
